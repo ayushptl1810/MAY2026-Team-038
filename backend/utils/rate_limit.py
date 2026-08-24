@@ -28,21 +28,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client = get_async_redis()
 
-        await client.zremrangebyscore(key, 0, window_start)
-        count = await client.zcard(key)
+        try:
+            await client.zremrangebyscore(key, 0, window_start)
+            count = await client.zcard(key)
 
-        if count >= self.max_requests:
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Too many requests"},
-            )
+            if count >= self.max_requests:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too many requests"},
+                )
 
-        # Unique member per request (timestamp alone can collide within the
-        # same millisecond under load) so ZADD never silently overwrites a
-        # prior hit instead of counting a new one.
-        pipe = client.pipeline()
-        pipe.zadd(key, {f"{now}:{uuid.uuid4().hex}": now})
-        pipe.expire(key, int(self.window_seconds) + 1)
-        await pipe.execute()
+            # Unique member per request (timestamp alone can collide within
+            # the same millisecond under load) so ZADD never silently
+            # overwrites a prior hit instead of counting a new one.
+            pipe = client.pipeline()
+            pipe.zadd(key, {f"{now}:{uuid.uuid4().hex}": now})
+            pipe.expire(key, int(self.window_seconds) + 1)
+            await pipe.execute()
+        except Exception:
+            # Redis being down must not take the whole API down with it -
+            # fail open (skip limiting for this request) rather than 500
+            # every request, including login.
+            pass
 
         return await call_next(request)

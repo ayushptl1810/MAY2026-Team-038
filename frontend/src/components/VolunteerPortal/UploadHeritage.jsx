@@ -93,13 +93,29 @@ export default function UploadHeritage() {
         imageUrl = uploadData.image_url;
       }
 
+      // The backend has no columns for these - fold them into the
+      // description so the submission review still has this information
+      // instead of silently dropping what the volunteer typed.
+      const extraDetails = [
+        formData.heritageType && `Type: ${formData.heritageType}`,
+        formData.condition && `Condition: ${formData.condition}`,
+        (formData.contactName || formData.contactEmail || formData.contactPhone) &&
+          `Contact: ${[formData.contactName, formData.contactEmail, formData.contactPhone]
+            .filter(Boolean)
+            .join(" / ")}`,
+      ].filter(Boolean);
+
+      const description = [formData.description, ...extraDetails]
+        .filter(Boolean)
+        .join("\n\n");
+
       const payload = {
         name: formData.heritageName,
         category: formData.category,
         address: fullAddress || null,
         construction_period: formData.era || null,
         historical_significance: formData.significance || null,
-        description: formData.description || null,
+        description: description || null,
         image_url: imageUrl,
         latitude,
         longitude,
@@ -448,11 +464,10 @@ export default function UploadHeritage() {
               </svg>
 
               <label className="text-xs font-bold text-[#9c2d19] uppercase tracking-wider cursor-pointer hover:underline">
-                Upload Photographs
+                Upload Photograph
 
                 <input
                   type="file"
-                  multiple
                   accept="image/*"
                   className="hidden"
                   onChange={handleFileChange}
@@ -460,27 +475,18 @@ export default function UploadHeritage() {
               </label>
 
               <p className="mt-1.5 text-xs text-heritage-charcoal/60">
-                Upload clear images from multiple angles (JPEG, PNG).
+                Upload one clear image (JPEG, PNG).
               </p>
 
               {selectedFiles.length > 0 && (
                 <div className="mt-4 text-left w-full">
                   <p className="text-xs font-bold text-heritage-charcoal mb-2">
-                    Selected files:
+                    Selected file:
                   </p>
 
-                  <ul className="space-y-1">
-                    {selectedFiles.map((file) => (
-                      <li
-                        key={`${file.name}-${file.lastModified}`}
-                        className="text-xs text-heritage-charcoal/70"
-                      >
-                        {file.name}
-                      </li>
-                    ))}
-                  </ul>
-
-
+                  <p className="text-xs text-heritage-charcoal/70">
+                    {selectedFiles[0].name}
+                  </p>
                 </div>
               )}
             </div>

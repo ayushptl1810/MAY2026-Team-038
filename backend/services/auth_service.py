@@ -217,6 +217,10 @@ def update_user_profile(
     if user is None:
         return None
 
+    # The row above is fresh, but a GET /auth/me within the next 60s would
+    # otherwise still hit the pre-update cache entry set by get_user_by_id.
+    get_user_by_id.cache_clear()
+
     roles = get_user_roles(conn, user_id)
     user["role"] = roles[0] if roles else None
 

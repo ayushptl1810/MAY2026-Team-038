@@ -25,8 +25,12 @@ export function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
-async function handleResponse(response) {
-  if (response.status === 401) {
+async function handleResponse(response, hadToken) {
+  // A 401 only means "your session expired" if a token was actually sent.
+  // Without a token (e.g. a login attempt with the wrong password), a 401
+  // is a plain auth failure - fall through and surface the backend's real
+  // detail message instead of overwriting it.
+  if (response.status === 401 && hadToken) {
     clearAuth();
     if (window.location.pathname !== "/login") {
       window.location.href = "/login";
@@ -80,7 +84,7 @@ export async function apiFetch(path, options = {}) {
     body,
   });
 
-  return handleResponse(response);
+  return handleResponse(response, Boolean(token));
 }
 
 // For multipart/form-data uploads - the browser sets the Content-Type
@@ -100,5 +104,5 @@ export async function apiFetchForm(path, formData, options = {}) {
     body: formData,
   });
 
-  return handleResponse(response);
+  return handleResponse(response, Boolean(token));
 }

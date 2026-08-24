@@ -100,6 +100,16 @@ export default function GlobeHome() {
       })
       setTrails(mappedTrails)
       setTrailsLoading(false)
+      // TrailExperience normally receives the active trail via router
+      // state, which is lost on a page refresh or a direct/bookmarked
+      // /trails/:id link. Cache the real (backend-derived) trails here so
+      // it can recover them instead of silently falling back to static
+      // demo data that won't have this trail's id.
+      try {
+        sessionStorage.setItem('intach_trails_cache', JSON.stringify(mappedTrails))
+      } catch {
+        // sessionStorage unavailable (private mode, quota) - non-fatal
+      }
       })
       .catch(err => {
         console.error("Failed to fetch trails", err)

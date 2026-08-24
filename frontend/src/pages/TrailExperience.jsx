@@ -13,7 +13,23 @@ import './TrailExperience.css'
 export default function TrailExperience() {
   const { trailId } = useParams()
   const location = useLocation()
-  const trail = useMemo(() => location.state?.trail || getTrailById(trailId), [trailId, location.state])
+  const trail = useMemo(() => {
+    if (location.state?.trail) return location.state.trail
+
+    // Router state (passed via <Link state={{trail}}>) is gone on a
+    // refresh or a direct/bookmarked link. Recover the real trail from the
+    // cache GlobeHome fills in before falling back to static demo data,
+    // which won't have this trail's (backend-generated) id.
+    try {
+      const cached = JSON.parse(sessionStorage.getItem('intach_trails_cache') || '[]')
+      const found = cached.find((t) => t.id === trailId)
+      if (found) return found
+    } catch {
+      // corrupt/unavailable cache - fall through to demo data
+    }
+
+    return getTrailById(trailId)
+  }, [trailId, location.state])
   const [stepIndex, setStepIndex] = useState(0)
   const [language, setLanguage] = useState('en')
   const [translatedText, setTranslatedText] = useState('')

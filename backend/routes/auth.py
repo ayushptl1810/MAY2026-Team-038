@@ -45,8 +45,12 @@ def login(
     )
 
     # Warm the trails cache so the first post-login dashboard load doesn't
-    # pay the DBSCAN clustering cost.
-    trails_service.get_dynamic_trails(conn)
+    # pay the DBSCAN clustering cost. Best-effort only - a clustering
+    # failure here must never turn a correct login into a 500.
+    try:
+        trails_service.get_dynamic_trails(conn)
+    except Exception:
+        pass
 
     return TokenResponse(
         access_token=token,

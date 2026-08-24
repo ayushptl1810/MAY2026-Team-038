@@ -113,10 +113,9 @@ def send_message(conn: connection, session_id: str, user_id: str | None, content
         cur.execute(SELECT_RECENT_MESSAGES, {"session_id": session_id, "limit": HISTORY_LIMIT})
         history = list(reversed(cur.fetchall()))
 
-    context_sites = retrieve_relevant_sites(conn, content)
-    prompt = _build_prompt(history, context_sites, content)
-
     try:
+        context_sites = retrieve_relevant_sites(conn, content)
+        prompt = _build_prompt(history, context_sites, content)
         answer = llm_client.generate_answer(prompt)
     except Exception as exc:
         raise HTTPException(
