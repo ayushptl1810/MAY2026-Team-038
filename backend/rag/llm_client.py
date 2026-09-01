@@ -7,8 +7,8 @@ from config import settings
 EMBEDDINGS_URL = "https://integrate.api.nvidia.com/v1/embeddings"
 CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-EMBEDDING_MODEL = "nvidia/nv-embedqa-e5-v5"
-GENERATION_MODEL = "meta/llama-3.1-70b-instruct"
+EMBEDDING_MODEL = "nvidia/nemotron-3-embed-1b"
+GENERATION_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 TIMEOUT_SECONDS = 30
 

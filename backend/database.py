@@ -2,7 +2,7 @@ from typing import Iterator
 
 import psycopg2
 import psycopg2.extras
-from psycopg2.pool import SimpleConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 
 from config import settings
 
@@ -17,7 +17,7 @@ psycopg2.extras.register_uuid()
 # every single request paid a full fresh-connection handshake (~1.5s to
 # the remote DB), regardless of any query-level caching. minconn=2 lets
 # putconn() actually retain idle connections.
-pool = SimpleConnectionPool(minconn=2, maxconn=10, dsn=settings.database_url)
+pool = ThreadedConnectionPool(minconn=2, maxconn=10, dsn=settings.database_url)
 
 
 def get_db() -> Iterator[psycopg2.extensions.connection]:

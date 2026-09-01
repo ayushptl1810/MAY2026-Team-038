@@ -131,6 +131,11 @@ export default function ProductDetails() {
   }
 
   const addToCart = () => {
+    if (!localStorage.getItem("intach_token")) {
+      navigate("/login");
+      return;
+    }
+
     const cart = JSON.parse(localStorage.getItem("heritage_cart")) || [];
     const existing = cart.find((item) => item.id === product.id);
 

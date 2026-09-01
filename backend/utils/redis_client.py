@@ -17,7 +17,7 @@ def get_redis() -> redis.Redis:
     alongside)."""
     global _client
     if _client is None:
-        _client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=False)
+        _client = redis.Redis.from_url(settings.redis_url, decode_responses=False)
     return _client
 
 
@@ -27,7 +27,7 @@ def get_async_redis() -> redis_async.Redis:
     there would stall every other in-flight request."""
     global _async_client
     if _async_client is None:
-        _async_client = redis_async.from_url(settings.REDIS_URL, decode_responses=False)
+        _async_client = redis_async.from_url(settings.redis_url, decode_responses=False)
     return _async_client
 
 

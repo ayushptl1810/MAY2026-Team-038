@@ -37,14 +37,34 @@ function ScrollToTop() {
 }
 
 // Client-Side Route Protection Component.
-// The backend doesn't expose the caller's roles on GET /auth/me, so this
-// only checks "is logged in" — per-action authorization (e.g. shop_admin
-// only) is enforced server-side and surfaced as an inline 403 message.
+// Checks "is logged in" — fine-grained per-action authorization (e.g.
+// shop_admin vs system_admin) is enforced server-side and surfaced as an
+// inline 403 message.
 function ProtectedRoute() {
   const hasToken = localStorage.getItem("intach_token");
 
   if (!hasToken) {
     return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
+
+// Admin-only route guard. GET /auth/me returns `role`, and every non
+// registered_member role (volunteer, event_coordinator, heritage_expert,
+// shop_admin, system_admin) is staff — same convention HomeOrAdminRedirect
+// already uses. A logged-out visitor goes to /login; a logged-in plain
+// member gets bounced to "/" instead of seeing the admin shell at all.
+function AdminRoute() {
+  const hasToken = localStorage.getItem("intach_token");
+  if (!hasToken) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const storedUser = localStorage.getItem("intach_user");
+  const role = storedUser ? JSON.parse(storedUser).role : null;
+  if (role === "registered_member" || !role) {
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
@@ -102,19 +122,29 @@ function AnimatedRoutes() {
         <Route path="/events" element={<AnimatedPage><EventPage /></AnimatedPage>} />
         <Route path="/shop" element={<AnimatedPage><HeritageShop /></AnimatedPage>} />
         <Route path="/product/:id" element={<AnimatedPage><ProductDetails /></AnimatedPage>} />
-        <Route path="/checkout" element={<AnimatedPage><Checkout /></AnimatedPage>} />
         <Route path="/trails" element={<AnimatedPage><GlobeHome /></AnimatedPage>} />
+
+        {/* Actions that require login, but keep the site header/footer */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/checkout" element={<AnimatedPage><Checkout /></AnimatedPage>} />
+        </Route>
       </Route>
 
       {/* Standalone Public Routes (No Header & Footer) */}
       <Route path="/login" element={<AnimatedPage><Login /></AnimatedPage>} />
       <Route path="/register" element={<AnimatedPage><Register /></AnimatedPage>} />
-      
-      {/* Immersive trail — standalone public route (no global header/footer) */}
-      <Route path="/trails/:trailId" element={<AnimatedPage><TrailExperience /></AnimatedPage>} />
 
-      {/* Protected Admin Routes (No Global Header & Footer, gets AdminSidebar layout) */}
+      {/* Immersive trail — protected: browsing /trails is public, actually
+          starting a trail experience requires login (same pattern as
+          /events/register). */}
       <Route element={<ProtectedRoute />}>
+        <Route path="/trails/:trailId" element={<AnimatedPage><TrailExperience /></AnimatedPage>} />
+      </Route>
+
+      {/* Admin Routes (No Global Header & Footer, gets AdminSidebar layout).
+          AdminRoute checks role, not just login — a logged-in
+          registered_member is bounced to "/" like a logged-out visitor. */}
+      <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin-review" element={<AnimatedPage><AdminReviewPage /></AnimatedPage>} />
           <Route path="/admin-db" element={<AnimatedPage><AdminDatabase /></AnimatedPage>} />
