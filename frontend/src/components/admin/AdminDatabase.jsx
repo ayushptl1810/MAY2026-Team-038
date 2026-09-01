@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { listPending, listRegions } from '../../api/heritage';
@@ -10,7 +10,6 @@ import './AdminDatabase.css';
 const MAHARASHTRA_CENTER = [18.9, 74.6];
 const DEFAULT_ZOOM = 7;
 const PAGE_SIZE = 10;
-const CATEGORIES = ['built', 'natural', 'craft', 'intangible'];
 const STATUSES = ['all', 'pending_review', 'approved', 'rejected'];
 
 function MapBoundsController({ sites }) {
@@ -54,6 +53,7 @@ export default function AdminDatabase() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeSiteId, setActiveSiteId] = useState(null);
+  const [seenCategories, setSeenCategories] = useState([]);
 
   useEffect(() => {
     listRegions()
@@ -67,8 +67,12 @@ export default function AdminDatabase() {
     listPending({ status, category: category || null, regionId: regionId || null, page, pageSize: PAGE_SIZE })
       .then((data) => {
         if (cancelled) return;
-        setSites(data.items.map(toSite));
+        const mapped = data.items.map(toSite);
+        setSites(mapped);
         setTotal(data.total);
+        setSeenCategories((prev) =>
+          Array.from(new Set([...prev, ...mapped.map((s) => s.type).filter(Boolean)])).sort()
+        );
       })
       .catch((err) => {
         if (!cancelled) {
@@ -87,6 +91,13 @@ export default function AdminDatabase() {
   useEffect(() => {
     setPage(1);
   }, [status, category, regionId]);
+
+  // Category options: whatever the selected one is, plus every category seen
+  // in loaded pages (mirrors the user side deriving filters from fetched data).
+  const categoryOptions = useMemo(
+    () => Array.from(new Set([...seenCategories, category].filter(Boolean))).sort(),
+    [seenCategories, category]
+  );
 
   const mappableSites = sites.filter((s) => s.lat !== null && s.lat !== undefined && s.lon !== null && s.lon !== undefined);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -127,7 +138,7 @@ export default function AdminDatabase() {
               className="w-40 border border-heritage-border bg-white shadow-sm focus:outline-none focus:border-heritage-bronze focus:ring-1 focus:ring-heritage-bronze rounded-lg p-2.5 text-xs font-semibold text-heritage-espresso transition cursor-pointer"
             >
               <option value="">All Categories</option>
-              {CATEGORIES.map((c) => (
+              {categoryOptions.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

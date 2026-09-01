@@ -27,6 +27,10 @@ const categoryColor = (eventType) => {
   return map[eventType] || "bg-heritage-cream text-heritage-charcoal";
 };
 
+const isUpcoming = (event) =>
+  event.status === "published" &&
+  new Date(`${event.event_date}T00:00:00`) >= new Date(new Date().toDateString());
+
 const formatEventType = (type) => type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const formatDate = (dateStr) =>
@@ -111,6 +115,7 @@ export default function AdminEvents() {
   const selectedEvent = eventList.find((e) => e.id === selectedId) || null;
 
   const deleteEvent = async (event) => {
+    if (!isUpcoming(event)) return;
     if (!window.confirm(`Delete "${event.title}"? This cannot be undone.`)) return;
     try {
       await remove(event.id);
@@ -197,7 +202,7 @@ export default function AdminEvents() {
                       className="bg-heritage-cream border border-heritage-border/60 text-heritage-espresso text-xs rounded font-sans px-3.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-heritage-bronze w-52"
                     />
                     <div className="flex items-center gap-1.5">
-                      {["all", "draft", "published", "cancelled", "completed"].map((s) => (
+                      {["all", "published", "cancelled", "completed"].map((s) => (
                         <button
                           key={s}
                           onClick={() => setStatusFilter(s)}
@@ -276,24 +281,30 @@ export default function AdminEvents() {
                             </td>
                             <td className="py-3 px-3 w-28" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => navigate("/admin/events/create", { state: { event } })}
-                                  className="p-1.5 border border-heritage-border/60 text-heritage-charcoal hover:text-heritage-red hover:bg-heritage-cream rounded-md transition-all cursor-pointer shadow-sm active:scale-90"
-                                  title="Edit Event"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => deleteEvent(event)}
-                                  className="p-1.5 border border-heritage-border/60 text-heritage-charcoal hover:bg-red-50 hover:text-red-700 hover:border-red-200 rounded-md transition-all cursor-pointer shadow-sm active:scale-90"
-                                  title="Delete Event"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+                                {isUpcoming(event) ? (
+                                  <>
+                                    <button
+                                      onClick={() => navigate("/admin/events/create", { state: { event } })}
+                                      className="p-1.5 border border-heritage-border/60 text-heritage-charcoal hover:text-heritage-red hover:bg-heritage-cream rounded-md transition-all cursor-pointer shadow-sm active:scale-90"
+                                      title="Edit Event"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => deleteEvent(event)}
+                                      className="p-1.5 border border-heritage-border/60 text-heritage-charcoal hover:bg-red-50 hover:text-red-700 hover:border-red-200 rounded-md transition-all cursor-pointer shadow-sm active:scale-90"
+                                      title="Delete Event"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-[10px] text-heritage-charcoal/40 font-sans">Locked</span>
+                                )}
                               </div>
                             </td>
                           </tr>
