@@ -97,6 +97,26 @@ def test_send_message_persists_user_and_assistant_messages(mock_retrieve, mock_g
 
 @patch("rag.chat_service.llm_client.generate_answer")
 @patch("rag.chat_service.retrieve_relevant_sites")
+def test_send_message_prompt_instructs_concise_answers(mock_retrieve, mock_generate):
+    mock_retrieve.return_value = [
+        {"site_id": "site-1", "name": "Shaniwar Wada", "content_chunk": "Built 1732.", "distance": 0.1}
+    ]
+    mock_generate.return_value = "Built in 1732."
+    conn = _FakeConnection()
+    session = chat_service.create_session(conn, user_id="user-1")
+
+    chat_service.send_message(conn, session["id"], "user-1", "When was Shaniwar Wada built?")
+
+    prompt = mock_generate.call_args[0][0]
+    system = prompt[0]["content"].lower()
+    assert prompt[0]["role"] == "system"
+    assert "concise" in system
+    assert "2-4 sentences" in system
+    assert "Built 1732." in prompt[0]["content"]
+
+
+@patch("rag.chat_service.llm_client.generate_answer")
+@patch("rag.chat_service.retrieve_relevant_sites")
 def test_send_message_wrong_user_is_rejected(mock_retrieve, mock_generate):
     conn = _FakeConnection()
     session = chat_service.create_session(conn, user_id="user-1")

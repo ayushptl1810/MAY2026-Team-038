@@ -4,7 +4,7 @@ import HeritageModal from "./HeritageModal";
 import { listPending, approve, reject } from "../../api/heritage";
 import { ApiError } from "../../api/client";
 
-const ITEMS_PER_PAGE = 2;
+const ITEMS_PER_PAGE = 10;
 
 const formatDate = (isoString) => {
   if (!isoString) return "—";
