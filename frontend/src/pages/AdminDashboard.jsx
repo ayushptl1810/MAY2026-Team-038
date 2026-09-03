@@ -28,7 +28,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([
+    // allSettled, not all: on a cold backend one panel's request can 500
+    // while the rest succeed. Render whatever came back and show a soft
+    // notice rather than blanking the whole dashboard on a single failure.
+    Promise.allSettled([
       getShopStats(),
       getEvents(),
       getRecentUploads(),
@@ -36,18 +39,22 @@ export default function AdminDashboard() {
       getMemberStats(),
       getSalesTrend(),
     ])
-      .then(([stats, events, recentUploads, pending, members, trend]) => {
+      .then((results) => {
         if (cancelled) return;
-        setShopStats(stats);
-        setEventsData(events);
-        setUploads(recentUploads.uploads);
-        setReviewCount(pending.total);
-        setMemberStats(members);
-        setSalesTrend(trend.points);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setDashboardError(err instanceof ApiError ? err.detail : "Something went wrong, please try again.");
+        const [stats, events, recentUploads, pending, members, trend] = results;
+        if (stats.status === "fulfilled") setShopStats(stats.value);
+        if (events.status === "fulfilled") setEventsData(events.value);
+        if (recentUploads.status === "fulfilled") setUploads(recentUploads.value.uploads);
+        if (pending.status === "fulfilled") setReviewCount(pending.value.total);
+        if (members.status === "fulfilled") setMemberStats(members.value);
+        if (trend.status === "fulfilled") setSalesTrend(trend.value.points);
+
+        const failure = results.find((r) => r.status === "rejected");
+        if (failure) {
+          const err = failure.reason;
+          setDashboardError(
+            err instanceof ApiError ? err.detail : "Some dashboard data could not be loaded. Try refreshing.",
+          );
         }
       });
 

@@ -47,15 +47,24 @@ def cached(ttl_seconds: float) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            client = get_redis()
             key = _key(func, args, kwargs)
 
-            cached_value = client.get(key)
-            if cached_value is not None:
-                return pickle.loads(cached_value)
+            # Redis is a latency optimisation, not a hard dependency: if it
+            # is unreachable (cold managed instance, restart, network blip)
+            # serve the live query rather than 500 the request - same
+            # fail-open stance as utils/rate_limit.py.
+            try:
+                cached_value = get_redis().get(key)
+                if cached_value is not None:
+                    return pickle.loads(cached_value)
+            except Exception:
+                return func(*args, **kwargs)
 
             value = func(*args, **kwargs)
-            client.set(key, pickle.dumps(value), ex=int(ttl_seconds) or 1)
+            try:
+                get_redis().set(key, pickle.dumps(value), ex=int(ttl_seconds) or 1)
+            except Exception:
+                pass
             return value
 
         def cache_clear() -> None:

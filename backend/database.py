@@ -1,8 +1,9 @@
+import time
 from typing import Iterator
 
 import psycopg2
 import psycopg2.extras
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 from config import settings
 
@@ -17,11 +18,39 @@ psycopg2.extras.register_uuid()
 # every single request paid a full fresh-connection handshake (~1.5s to
 # the remote DB), regardless of any query-level caching. minconn=2 lets
 # putconn() actually retain idle connections.
-pool = ThreadedConnectionPool(minconn=2, maxconn=10, dsn=settings.database_url)
+pool = ThreadedConnectionPool(
+    minconn=2,
+    maxconn=24,
+    dsn=settings.database_url,
+    connect_timeout=10,
+    keepalives=1,
+    keepalives_idle=30,
+    keepalives_interval=10,
+    keepalives_count=3,
+)
+
+_ACQUIRE_TIMEOUT = 5.0  # seconds a request will wait for a free connection
+_ACQUIRE_INTERVAL = 0.05
+
+
+def _getconn_blocking() -> psycopg2.extensions.connection:
+    """ThreadedConnectionPool.getconn() raises immediately when maxconn is
+    reached. A dashboard load fires ~6 requests at once and cold Neon holds
+    each connection for seconds, briefly draining the pool - a short wait
+    lets that burst queue through instead of 500ing. A genuine connection
+    leak still surfaces as PoolError once the timeout elapses."""
+    deadline = time.monotonic() + _ACQUIRE_TIMEOUT
+    while True:
+        try:
+            return pool.getconn()
+        except PoolError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(_ACQUIRE_INTERVAL)
 
 
 def get_db() -> Iterator[psycopg2.extensions.connection]:
-    conn = pool.getconn()
+    conn = _getconn_blocking()
     try:
         yield conn
         conn.commit()
